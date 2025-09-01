@@ -454,8 +454,16 @@ router.get('/cancelled', auth, async (req, res) => {
     const skip = (page - 1) * limit;
     
     const sales = await Sale.find(query)
-      .populate('createdBy', 'firstName lastName')
-      .populate('cancelledBy', 'firstName lastName')
+      .populate({
+        path: 'createdBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'cancelledBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
       .populate({
         path: 'modifiedBy',
         select: 'firstName lastName',
@@ -515,19 +523,33 @@ router.post('/:id/cancel', auth, async (req, res) => {
     if (sale.isCancelled) {
       sale.cancelledBy = req.user._id;
       sale.cancelledAt = new Date();
-      console.log(`Satış iptal edildi: ${sale.customerName} ${sale.customerSurname} - ID: ${sale._id}`);
     } else {
       sale.cancelledBy = undefined;
       sale.cancelledAt = undefined;
-      console.log(`Satış iptal geri alındı: ${sale.customerName} ${sale.customerSurname} - ID: ${sale._id}`);
     }
 
     await sale.save();
     const updatedSale = await Sale.findById(req.params.id)
-      .populate('createdBy', 'firstName lastName')
-      .populate('cancelledBy', 'firstName lastName')
-      .populate('modifiedBy', 'firstName lastName')
-      .populate('paymentType', 'name');
+      .populate({
+        path: 'createdBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'cancelledBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'modifiedBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'paymentType',
+        select: 'name',
+        options: { strictPopulate: false }
+      });
 
     res.json({
       success: true,
@@ -657,8 +679,15 @@ function getDateOfISOWeek(week, year) {
   return ISOweekStart;
 }
 
-// Phantom iptal kayıtlarını temizle (admin)
+// Phantom iptal kayıtlarını temizle (admin) - sadece development
 router.post('/fix-phantom-cancellations', auth, async (req, res) => {
+  // Production'da bu endpoint devre dışı
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({
+      success: false,
+      message: 'Bu endpoint production\'da kullanılamaz'
+    });
+  }
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
@@ -709,8 +738,15 @@ router.post('/fix-phantom-cancellations', auth, async (req, res) => {
   }
 });
 
-// Data temizleme endpoint (admin)
+// Data temizleme endpoint (admin) - sadece development
 router.post('/clean-data', auth, async (req, res) => {
+  // Production'da bu endpoint devre dışı
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({
+      success: false,
+      message: 'Bu endpoint production\'da kullanılamaz'
+    });
+  }
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({

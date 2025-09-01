@@ -38,7 +38,11 @@ router.get('/statistics', auth, async (req, res) => {
       if (startDate) cancelQuery.cancelledAt.$gte = new Date(startDate);
       if (endDate) cancelQuery.cancelledAt.$lte = new Date(endDate);
     }
-    const cancelledSales = await Sale.find(cancelQuery).populate('createdBy', 'firstName lastName');
+    const cancelledSales = await Sale.find(cancelQuery).populate({
+      path: 'createdBy',
+      select: 'firstName lastName',
+      options: { strictPopulate: false }
+    });
 
     // Toplam değerler
     const totalSales = sales.reduce((sum, sale) => sum + sale.activitySalePrice, 0);

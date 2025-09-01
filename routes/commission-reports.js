@@ -22,10 +22,26 @@ router.get('/cancelled-sales', auth, async (req, res) => {
     }
 
     const cancelledSales = await Sale.find(query)
-      .populate('createdBy', 'firstName lastName')
-      .populate('cancelledBy', 'firstName lastName')
-      .populate('modifiedBy', 'firstName lastName')
-      .populate('paymentType', 'name')
+      .populate({
+        path: 'createdBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'cancelledBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'modifiedBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'paymentType',
+        select: 'name',
+        options: { strictPopulate: false }
+      })
       .sort({ cancelledAt: -1 });
 
     // Temsilci bazında grupla
@@ -149,7 +165,11 @@ router.get('/agent-commissions', auth, async (req, res) => {
     }
 
     const cancelledSales = await Sale.find(cancelQuery)
-      .populate('createdBy', 'firstName lastName')
+      .populate({
+        path: 'createdBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
       .sort({ cancelledAt: -1 });
 
     // Temsilci bazında grupla

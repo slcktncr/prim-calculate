@@ -32,9 +32,7 @@ const CancelledSales = () => {
         url += `?${params.toString()}`;
       }
 
-      console.log('Fetching cancelled sales from:', url);
       const response = await axios.get(url);
-      console.log('Response:', response.data);
       
       if (response.data.success) {
         setSales(response.data.data?.sales || []);

@@ -54,8 +54,71 @@ mongoose.connect(process.env.MONGODB_URI, {
   useNewUrlParser: true,
   useUnifiedTopology: true,
 })
-.then(() => {
+.then(async () => {
   console.log('MongoDB bağlantısı başarılı');
+  
+  // Otomatik veri temizliği
+  try {
+    console.log('🔧 Otomatik veri temizliği başlıyor...');
+    
+    const Sale = require('./models/Sale');
+    
+    // Phantom iptal kayıtlarını bul ve düzelt
+    const phantomCancelled = await Sale.find({
+      isCancelled: true,
+      $or: [
+        { cancelledAt: { $exists: false } },
+        { cancelledAt: null },
+        { cancelledBy: { $exists: false } },
+        { cancelledBy: null }
+      ]
+    });
+
+    console.log(`📊 ${phantomCancelled.length} phantom iptal kaydı bulundu`);
+
+    let fixedCount = 0;
+    for (const sale of phantomCancelled) {
+      // Eğer iptal bilgileri eksikse, satışı aktif hale getir
+      if (!sale.cancelledAt || !sale.cancelledBy) {
+        sale.isCancelled = false;
+        sale.cancelledAt = undefined;
+        sale.cancelledBy = undefined;
+        await sale.save();
+        fixedCount++;
+        console.log(`✅ Düzeltildi: ${sale.customerName} ${sale.customerSurname}`);
+      }
+    }
+
+    // Ek kontrol: isCancelled false ama cancelledAt/cancelledBy dolu olanları temizle
+    const inconsistentSales = await Sale.find({
+      isCancelled: false,
+      $or: [
+        { cancelledAt: { $exists: true, $ne: null } },
+        { cancelledBy: { $exists: true, $ne: null } }
+      ]
+    });
+
+    console.log(`📊 ${inconsistentSales.length} tutarsız aktif satış bulundu`);
+
+    for (const sale of inconsistentSales) {
+      sale.cancelledAt = undefined;
+      sale.cancelledBy = undefined;
+      await sale.save();
+      fixedCount++;
+      console.log(`✅ Aktif satış temizlendi: ${sale.customerName} ${sale.customerSurname}`);
+    }
+
+    // İstatistikleri logla
+    const totalSales = await Sale.countDocuments({});
+    const activeSales = await Sale.countDocuments({ isCancelled: { $ne: true } });
+    const cancelledSales = await Sale.countDocuments({ isCancelled: true });
+    
+    console.log(`📈 Veri Durumu: Toplam:${totalSales} Aktif:${activeSales} İptal:${cancelledSales} Düzeltilen:${fixedCount}`);
+    console.log('✅ Otomatik veri temizliği tamamlandı!');
+    
+  } catch (error) {
+    console.error('❌ Otomatik veri temizliği hatası:', error.message);
+  }
 })
 .catch((err) => {
   console.error('MongoDB bağlantı hatası:', err);
