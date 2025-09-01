@@ -32,11 +32,25 @@ const CancelledSales = () => {
         url += `?${params.toString()}`;
       }
 
+      console.log('Fetching cancelled sales from:', url);
       const response = await axios.get(url);
-      setSales(response.data.data?.sales || []);
+      console.log('Response:', response.data);
+      
+      if (response.data.success) {
+        setSales(response.data.data?.sales || []);
+      } else {
+        throw new Error(response.data.message || 'API başarısız oldu');
+      }
     } catch (error) {
       console.error('İptal satışlar hatası:', error);
-      toast.error(error.response?.data?.message || 'İptal edilmiş satışlar yüklenirken hata oluştu');
+      console.error('Error response:', error.response);
+      
+      if (error.response?.status === 500) {
+        toast.error('Sunucu hatası: İptal edilmiş satışlar yüklenemedi');
+      } else {
+        toast.error(error.response?.data?.message || 'İptal edilmiş satışlar yüklenirken hata oluştu');
+      }
+      setSales([]);
     } finally {
       setLoading(false);
     }

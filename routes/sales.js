@@ -456,8 +456,16 @@ router.get('/cancelled', auth, async (req, res) => {
     const sales = await Sale.find(query)
       .populate('createdBy', 'firstName lastName')
       .populate('cancelledBy', 'firstName lastName')
-      .populate('modifiedBy', 'firstName lastName')
-      .populate('paymentType', 'name')
+      .populate({
+        path: 'modifiedBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'paymentType',
+        select: 'name',
+        options: { strictPopulate: false }
+      })
       .sort({ cancelledAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -507,9 +515,11 @@ router.post('/:id/cancel', auth, async (req, res) => {
     if (sale.isCancelled) {
       sale.cancelledBy = req.user._id;
       sale.cancelledAt = new Date();
+      console.log(`Satış iptal edildi: ${sale.customerName} ${sale.customerSurname} - ID: ${sale._id}`);
     } else {
       sale.cancelledBy = undefined;
       sale.cancelledAt = undefined;
+      console.log(`Satış iptal geri alındı: ${sale.customerName} ${sale.customerSurname} - ID: ${sale._id}`);
     }
 
     await sale.save();
@@ -646,5 +656,106 @@ function getDateOfISOWeek(week, year) {
     ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
   return ISOweekStart;
 }
+
+// Phantom iptal kayıtlarını temizle (admin)
+router.post('/fix-phantom-cancellations', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu işlem için admin yetkisi gerekli'
+      });
+    }
+
+    // İptal edilmiş ama cancelledAt ve cancelledBy bilgisi olmayan kayıtları bul
+    const phantomCancelled = await Sale.find({
+      isCancelled: true,
+      $or: [
+        { cancelledAt: { $exists: false } },
+        { cancelledAt: null },
+        { cancelledBy: { $exists: false } },
+        { cancelledBy: null }
+      ]
+    });
+
+    console.log('Phantom iptal kayıtları:', phantomCancelled.length);
+
+    // Bu kayıtları düzelt - ya tamamen iptal et ya da aktif hale getir
+    let fixedCount = 0;
+    for (const sale of phantomCancelled) {
+      // Eğer hiç iptal bilgisi yoksa, aktif hale getir
+      if (!sale.cancelledAt && !sale.cancelledBy) {
+        sale.isCancelled = false;
+        await sale.save();
+        fixedCount++;
+        console.log(`Düzeltildi: ${sale.customerName} ${sale.customerSurname} - aktif hale getirildi`);
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${fixedCount} phantom iptal kaydı düzeltildi`,
+      data: {
+        phantomCount: phantomCancelled.length,
+        fixedCount
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Phantom kayıt düzeltme hatası',
+      error: error.message
+    });
+  }
+});
+
+// Data temizleme endpoint (admin)
+router.post('/clean-data', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu işlem için admin yetkisi gerekli'
+      });
+    }
+
+    // Tüm satışları kontrol et
+    const allSales = await Sale.find({});
+    console.log('Toplam satış sayısı:', allSales.length);
+    
+    const activeSales = await Sale.find({ isCancelled: { $ne: true } });
+    console.log('Aktif satış sayısı:', activeSales.length);
+    
+    const cancelledSales = await Sale.find({ isCancelled: true });
+    console.log('İptal edilmiş satış sayısı:', cancelledSales.length);
+    
+    // İptal edilmiş satışların detayları
+    const cancelledDetails = cancelledSales.map(sale => ({
+      _id: sale._id,
+      customer: `${sale.customerName} ${sale.customerSurname}`,
+      isCancelled: sale.isCancelled,
+      cancelledAt: sale.cancelledAt,
+      cancelledBy: sale.cancelledBy
+    }));
+    
+    console.log('İptal detayları:', JSON.stringify(cancelledDetails, null, 2));
+
+    res.json({
+      success: true,
+      data: {
+        totalSales: allSales.length,
+        activeSales: activeSales.length,
+        cancelledSales: cancelledSales.length,
+        cancelledDetails
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Veri temizleme hatası',
+      error: error.message
+    });
+  }
+});
 
 module.exports = router;
