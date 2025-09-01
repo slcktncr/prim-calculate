@@ -461,7 +461,6 @@ router.get('/cancelled', auth, async (req, res) => {
       .sort({ cancelledAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
-
     const total = await Sale.countDocuments(query);
 
     res.json({

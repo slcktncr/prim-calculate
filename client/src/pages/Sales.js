@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Plus, Edit, Trash2, Search, Filter, Download, Eye, Settings, AlertCircle, FileText, X } from 'lucide-react';
+import { Plus, Edit, Trash2, Search, Filter, Download, Eye, Settings, AlertCircle, FileText, X, ArrowRight, RefreshCw } from 'lucide-react';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
 
@@ -29,6 +29,13 @@ const Sales = () => {
   });
   const [showHistoryModal, setShowHistoryModal] = useState(false);
   const [selectedSaleHistory, setSelectedSaleHistory] = useState(null);
+  const [showTransferModal, setShowTransferModal] = useState(false);
+  const [transferringSale, setTransferringSale] = useState(null);
+  const [periods, setPeriods] = useState([]);
+  const [transferData, setTransferData] = useState({
+    targetPeriodId: '',
+    reason: ''
+  });
   const [formData, setFormData] = useState({
     customerName: '',
     customerSurname: '',
@@ -45,6 +52,9 @@ const Sales = () => {
   useEffect(() => {
     fetchSales();
     fetchPaymentTypes();
+    if (user.role === 'admin') {
+      fetchPeriods();
+    }
   }, [filterType, dateRange]);
 
   const fetchPaymentTypes = async () => {
@@ -191,6 +201,61 @@ const Sales = () => {
     setShowHistoryModal(true);
   };
 
+  const fetchPeriods = async () => {
+    try {
+      const response = await axios.get('/api/commission-periods');
+      setPeriods(response.data.data?.periods || []);
+    } catch (error) {
+      console.error('Dönemler yüklenirken hata:', error);
+    }
+  };
+
+  const handleTransferToPeriod = (sale) => {
+    setTransferringSale(sale);
+    setShowTransferModal(true);
+  };
+
+  const handleTransferSubmit = async (e) => {
+    e.preventDefault();
+    try {
+      // Önce satışı transfer olarak işaretle
+      await axios.patch(`/api/sales/${transferringSale._id}`, {
+        isTransferredToNextPeriod: true,
+        transferredToPeriod: transferData.targetPeriodId,
+        transferDate: new Date(),
+        transferReason: transferData.reason
+      });
+
+      // Sonra hedef döneme ekle
+      const selectedPeriod = periods.find(p => p._id === transferData.targetPeriodId);
+      await axios.post(`/api/commission-periods/${transferData.targetPeriodId}/add-sale`, {
+        saleId: transferringSale._id,
+        transferReason: transferData.reason
+      });
+
+      toast.success(`Satış ${selectedPeriod?.name} dönemine aktarıldı`);
+      setShowTransferModal(false);
+      setTransferData({ targetPeriodId: '', reason: '' });
+      fetchSales();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Transfer işlemi başarısız');
+    }
+  };
+
+  const handleBulkTransferToNextPeriod = async () => {
+    if (!window.confirm('Geçmiş tarihli primi ödenmemiş satışları sıradaki aktif döneme aktarmak istediğinizden emin misiniz?')) {
+      return;
+    }
+
+    try {
+      const response = await axios.post('/api/commission-periods/transfer-unpaid-sales');
+      toast.success(response.data.message);
+      fetchSales();
+    } catch (error) {
+      toast.error(error.response?.data?.message || 'Toplu aktarım başarısız');
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       customerName: '',
@@ -228,6 +293,19 @@ const Sales = () => {
 
       {/* Filtreler */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6">
+        <div className="flex justify-between items-start mb-4">
+          <h3 className="text-lg font-medium text-gray-900">Filtreler</h3>
+          {user.role === 'admin' && (
+            <button
+              onClick={handleBulkTransferToNextPeriod}
+              className="bg-purple-600 hover:bg-purple-700 text-white px-4 py-2 rounded-md flex items-center gap-2"
+              title="Geçmiş tarihli primi ödenmemiş satışları sıradaki döneme aktar"
+            >
+              <RefreshCw size={16} />
+              Geçmiş Satışları Aktar
+            </button>
+          )}
+        </div>
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-2">Filtre Tipi</label>
@@ -485,6 +563,13 @@ const Sales = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                           {sale.customerName} {sale.customerSurname}
+                          {sale.isTransferredToNextPeriod && (
+                            <ArrowRight 
+                              size={14} 
+                              className="text-purple-500 cursor-pointer" 
+                              title={`Dönem aktarımı: ${sale.transferReason || 'Bilgi yok'}`}
+                            />
+                          )}
                           {sale.hasModifications && (
                             <div className="flex items-center gap-1">
                               <AlertCircle 
@@ -505,6 +590,11 @@ const Sales = () => {
                             <span className="text-xs text-orange-600 ml-2">
                               (değiştirildi: {format(new Date(sale.modifiedAt), 'dd.MM.yyyy', { locale: tr })})
                             </span>
+                          )}
+                          {sale.isTransferredToNextPeriod && sale.transferDate && (
+                            <div className="text-xs text-purple-600 mt-1">
+                              Dönem aktarımı: {format(new Date(sale.transferDate), 'dd.MM.yyyy', { locale: tr })}
+                            </div>
                           )}
                         </div>
                       </div>
@@ -579,6 +669,15 @@ const Sales = () => {
                             >
                               <Settings size={16} />
                             </button>
+                            {user.role === 'admin' && !sale.isCommissionPaid && !sale.isTransferredToNextPeriod && (
+                              <button
+                                onClick={() => handleTransferToPeriod(sale)}
+                                className="text-purple-600 hover:text-purple-900"
+                                title="Döneme Aktar"
+                              >
+                                <ArrowRight size={16} />
+                              </button>
+                            )}
                             <button
                               onClick={() => handleDelete(sale._id)}
                               className="text-red-600 hover:text-red-900"
@@ -926,6 +1025,84 @@ const Sales = () => {
                   )}
                 </div>
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Dönem Transfer Modal */}
+      {showTransferModal && transferringSale && (
+        <div className="fixed inset-0 bg-gray-600 bg-opacity-50 overflow-y-auto h-full w-full z-50">
+          <div className="relative top-20 mx-auto p-5 border w-11/12 max-w-lg shadow-lg rounded-md bg-white">
+            <div className="mt-3">
+              <h3 className="text-lg font-medium text-gray-900 mb-4">
+                Satışı Döneme Aktar
+              </h3>
+              
+              <div className="bg-blue-50 p-4 rounded-lg mb-4">
+                <h4 className="font-medium text-blue-900 mb-2">Aktarılacak Satış:</h4>
+                <p className="text-sm text-blue-800">
+                  <strong>{transferringSale.customerName} {transferringSale.customerSurname}</strong><br />
+                  Sözleşme: {transferringSale.contractNumber}<br />
+                  Prim: ₺{transferringSale.commission?.toLocaleString('tr-TR')}
+                </p>
+              </div>
+              
+              <form onSubmit={handleTransferSubmit}>
+                <div className="mb-4">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Hedef Dönem
+                  </label>
+                  <select
+                    required
+                    value={transferData.targetPeriodId}
+                    onChange={(e) => setTransferData({...transferData, targetPeriodId: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                  >
+                    <option value="">Dönem seçin</option>
+                    {periods
+                      .filter(p => ['draft', 'active'].includes(p.status))
+                      .map((period) => (
+                        <option key={period._id} value={period._id}>
+                          {period.periodName} ({period.status === 'active' ? 'Aktif' : 'Taslak'})
+                        </option>
+                      ))}
+                  </select>
+                </div>
+                
+                <div className="mb-6">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    Transfer Nedeni
+                  </label>
+                  <textarea
+                    required
+                    value={transferData.reason}
+                    onChange={(e) => setTransferData({...transferData, reason: e.target.value})}
+                    className="w-full p-2 border border-gray-300 rounded-md"
+                    rows="3"
+                    placeholder="Transfer nedenini açıklayın..."
+                  />
+                </div>
+                
+                <div className="flex gap-3">
+                  <button
+                    type="submit"
+                    className="bg-purple-600 hover:bg-purple-700 text-white px-6 py-2 rounded-md"
+                  >
+                    Döneme Aktar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowTransferModal(false);
+                      setTransferData({ targetPeriodId: '', reason: '' });
+                    }}
+                    className="bg-gray-500 hover:bg-gray-600 text-white px-6 py-2 rounded-md"
+                  >
+                    İptal
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </div>
