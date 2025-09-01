@@ -210,39 +210,7 @@ const Reports = () => {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <AlertTriangle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">İptal Edilen</p>
-                  <p className="text-2xl font-semibold text-gray-900">
-                    {statistics?.summary?.cancelledSalesCount || 0}
-                  </p>
-                  <p className="text-xs text-red-600">
-                    %{statistics?.summary?.cancellationRate || 0} iptal oranı
-                  </p>
-                </div>
-              </div>
-            </div>
-
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center">
-                <div className="p-2 bg-gray-100 rounded-lg">
-                  <TrendingUp className="h-6 w-6 text-gray-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">Kayıp Prim</p>
-                  <p className="text-2xl font-semibold text-red-900">
-                    ₺{parseFloat(statistics?.summary?.totalCancelledCommission || 0).toLocaleString('tr-TR')}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    İptallerden kaynaklı
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* İPTAL SİSTEMİ KALDIRILDI */}
           </div>
 
         {/* Şampiyonlar */}

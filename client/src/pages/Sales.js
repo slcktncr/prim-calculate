@@ -137,16 +137,7 @@ const Sales = () => {
     }
   };
 
-  const handleCancelSale = async (saleId) => {
-    try {
-      const response = await axios.post(`/api/sales/${saleId}/cancel`);
-      toast.success(response.data.message);
-      fetchSales();
-    } catch (error) {
-      console.error('İptal hatası:', error);
-      toast.error(error.response?.data?.message || 'İptal işlemi başarısız');
-    }
-  };
+  // İPTAL SİSTEMİ KALDIRILDI
 
   const handleCommissionPaid = async (saleId) => {
     try {
@@ -691,22 +682,7 @@ const Sales = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex gap-2">
-                        {/* İptal Butonu - Sadece aktif satışlar için */}
-                        {(user.role === 'admin' || user.permissions?.canCancelSales) && !sale.isCancelled && (
-                          <button
-                            onClick={() => handleCancelSale(sale._id)}
-                            className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200"
-                          >
-                            İptal Et
-                          </button>
-                        )}
-                        
-                        {/* İptal Edildi Göstergesi */}
-                        {sale.isCancelled && (
-                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
-                            İptal Edildi
-                          </span>
-                        )}
+                        {/* İPTAL SİSTEMİ KALDIRILDI */}
                         
                         {/* Prim Ödeme Butonu */}
                         {(user.role === 'admin' || user.permissions?.canMarkCommissionPaid) && (

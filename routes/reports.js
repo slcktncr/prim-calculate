@@ -28,21 +28,8 @@ router.get('/statistics', auth, async (req, res) => {
 
     const sales = await Sale.find(query).populate('createdBy', 'firstName lastName');
 
-    // İptal edilmiş satışları da al
-    let cancelQuery = { isCancelled: true };
-    if (req.user.role !== 'admin') {
-      cancelQuery.createdBy = req.user._id;
-    }
-    if (startDate || endDate) {
-      cancelQuery.cancelledAt = {};
-      if (startDate) cancelQuery.cancelledAt.$gte = new Date(startDate);
-      if (endDate) cancelQuery.cancelledAt.$lte = new Date(endDate);
-    }
-    const cancelledSales = await Sale.find(cancelQuery).populate({
-      path: 'createdBy',
-      select: 'firstName lastName',
-      options: { strictPopulate: false }
-    });
+    // İPTAL SİSTEMİ KALDIRILDI
+    const cancelledSales = [];
 
     // Toplam değerler
     const totalSales = sales.reduce((sum, sale) => sum + sale.activitySalePrice, 0);
@@ -142,11 +129,11 @@ router.get('/statistics', auth, async (req, res) => {
             positiveAdjustments,
             negativeAdjustments,
             netAdjustment: positiveAdjustments - negativeAdjustments,
-            // İptal istatistikleri
-            cancelledSalesCount: cancelledSales.length,
-            totalCancelledSales,
-            totalCancelledCommission,
-            cancellationRate
+            // İPTAL SİSTEMİ KALDIRILDI
+            cancelledSalesCount: 0,
+            totalCancelledSales: 0,
+            totalCancelledCommission: 0,
+            cancellationRate: 0
           },
           monthlyData,
           userData: Object.values(userData),

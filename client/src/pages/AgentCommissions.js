@@ -189,19 +189,7 @@ const AgentCommissions = () => {
               </div>
             </div>
 
-            <div className="bg-white p-6 rounded-lg shadow-sm">
-              <div className="flex items-center">
-                <div className="p-2 bg-red-100 rounded-lg">
-                  <XCircle className="h-6 w-6 text-red-600" />
-                </div>
-                <div className="ml-4">
-                  <p className="text-sm font-medium text-gray-600">İptal Kesintisi</p>
-                  <p className="text-2xl font-semibold text-red-900">
-                    -₺{parseFloat(data.summary.totalCancelledCommission || 0).toLocaleString('tr-TR')}
-                  </p>
-                </div>
-              </div>
-            </div>
+            {/* İPTAL SİSTEMİ KALDIRILDI */}
 
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center">
@@ -253,9 +241,7 @@ const AgentCommissions = () => {
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Toplam Prim
                     </th>
-                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
-                      İptal Kesintisi
-                    </th>
+                    {/* İPTAL SİSTEMİ KALDIRILDI */}
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Net Prim
                     </th>
@@ -290,16 +276,7 @@ const AgentCommissions = () => {
                           ₺{parseFloat(agent.commission).toLocaleString('tr-TR')}
                         </div>
                       </td>
-                      <td className="px-6 py-4 whitespace-nowrap">
-                        <div className="text-sm text-red-600 font-medium">
-                          {agent.cancelledCommission > 0 ? `-₺${parseFloat(agent.cancelledCommission).toLocaleString('tr-TR')}` : '₺0'}
-                        </div>
-                        {agent.cancelledCount > 0 && (
-                          <div className="text-xs text-gray-500">
-                            {agent.cancelledCount} iptal
-                          </div>
-                        )}
-                      </td>
+                      {/* İPTAL SİSTEMİ KALDIRILDI */}
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className={`text-sm font-medium ${agent.netCommission >= 0 ? 'text-green-600' : 'text-red-600'}`}>
                           ₺{parseFloat(agent.netCommission || 0).toLocaleString('tr-TR')}
