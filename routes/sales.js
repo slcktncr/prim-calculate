@@ -456,6 +456,7 @@ router.get('/cancelled', auth, async (req, res) => {
     const sales = await Sale.find(query)
       .populate('createdBy', 'firstName lastName')
       .populate('cancelledBy', 'firstName lastName')
+      .populate('modifiedBy', 'firstName lastName')
       .populate('paymentType', 'name')
       .sort({ cancelledAt: -1 })
       .skip(skip)
@@ -513,7 +514,11 @@ router.post('/:id/cancel', auth, async (req, res) => {
     }
 
     await sale.save();
-    const updatedSale = await Sale.findById(req.params.id).populate('createdBy', 'firstName lastName');
+    const updatedSale = await Sale.findById(req.params.id)
+      .populate('createdBy', 'firstName lastName')
+      .populate('cancelledBy', 'firstName lastName')
+      .populate('modifiedBy', 'firstName lastName')
+      .populate('paymentType', 'name');
 
     res.json({
       success: true,

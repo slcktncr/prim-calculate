@@ -24,6 +24,7 @@ router.get('/cancelled-sales', auth, async (req, res) => {
     const cancelledSales = await Sale.find(query)
       .populate('createdBy', 'firstName lastName')
       .populate('cancelledBy', 'firstName lastName')
+      .populate('modifiedBy', 'firstName lastName')
       .populate('paymentType', 'name')
       .sort({ cancelledAt: -1 });
 

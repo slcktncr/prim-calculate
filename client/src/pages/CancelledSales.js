@@ -35,7 +35,8 @@ const CancelledSales = () => {
       const response = await axios.get(url);
       setSales(response.data.data?.sales || []);
     } catch (error) {
-      toast.error('İptal edilmiş satışlar yüklenirken hata oluştu');
+      console.error('İptal satışlar hatası:', error);
+      toast.error(error.response?.data?.message || 'İptal edilmiş satışlar yüklenirken hata oluştu');
     } finally {
       setLoading(false);
     }
@@ -58,7 +59,8 @@ const CancelledSales = () => {
       setReportData(response.data.data);
       setShowReport(true);
     } catch (error) {
-      toast.error('İptal raporu yüklenirken hata oluştu');
+      console.error('İptal raporu hatası:', error);
+      toast.error(error.response?.data?.message || 'İptal raporu yüklenirken hata oluştu');
     } finally {
       setLoading(false);
     }
