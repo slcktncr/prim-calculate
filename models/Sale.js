@@ -154,6 +154,33 @@ const saleSchema = new mongoose.Schema({
   commissionAdjustmentReason: {
     type: String,
     trim: true
+  },
+  
+  // Hakediş dönem yönetimi
+  commissionPeriod: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CommissionPeriod'
+  },
+  isCommissionPaid: {
+    type: Boolean,
+    default: false
+  },
+  
+  // Transfer yönetimi
+  isTransferredToNextPeriod: {
+    type: Boolean,
+    default: false
+  },
+  transferredToPeriod: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'CommissionPeriod'
+  },
+  transferDate: {
+    type: Date
+  },
+  transferReason: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

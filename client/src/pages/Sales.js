@@ -233,7 +233,7 @@ const Sales = () => {
         transferReason: transferData.reason
       });
 
-      toast.success(`Satış ${selectedPeriod?.name} dönemine aktarıldı`);
+      toast.success(`Satış ${selectedPeriod?.periodName || selectedPeriod?.displayName} dönemine aktarıldı`);
       setShowTransferModal(false);
       setTransferData({ targetPeriodId: '', reason: '' });
       fetchSales();
@@ -1064,7 +1064,7 @@ const Sales = () => {
                       .filter(p => ['draft', 'active'].includes(p.status))
                       .map((period) => (
                         <option key={period._id} value={period._id}>
-                          {period.periodName} ({period.status === 'active' ? 'Aktif' : 'Taslak'})
+                          {period.name || period.displayName || period.periodName} ({period.status === 'active' ? 'Aktif' : 'Taslak'})
                         </option>
                       ))}
                   </select>

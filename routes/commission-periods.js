@@ -502,10 +502,10 @@ router.post('/transfer-unpaid-sales', adminAuth, async (req, res) => {
 
     res.json({
       success: true,
-      message: `${transferredCount} adet geçmiş tarihli satış ${activePeriod.name} dönemine aktarıldı.`,
+      message: `${transferredCount} adet geçmiş tarihli satış ${activePeriod.displayName} dönemine aktarıldı.`,
       data: { 
         transferredCount,
-        targetPeriod: activePeriod.name
+        targetPeriod: activePeriod.displayName
       }
     });
   } catch (error) {
