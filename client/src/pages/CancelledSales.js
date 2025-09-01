@@ -64,12 +64,12 @@ const CancelledSales = () => {
   const handleRestoreSale = async (saleId) => {
     if (window.confirm('Bu satışın iptalini kaldırmak istediğinizden emin misiniz?')) {
       try {
-        await axios.post(`/api/sales/${saleId}/cancel`);
+        await axios.post(`/api/sales/${saleId}/restore`);
         toast.success('Satış iptali kaldırıldı');
         fetchCancelledSales(); // Listeyi yenile
       } catch (error) {
         console.error('İptal kaldırma hatası:', error);
-        toast.error('İptal kaldırma işlemi başarısız');
+        toast.error(error.response?.data?.message || 'İptal kaldırma işlemi başarısız');
       }
     }
   };

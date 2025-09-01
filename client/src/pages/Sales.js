@@ -691,18 +691,21 @@ const Sales = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">
                       <div className="flex gap-2">
-                        {/* İptal Butonu */}
-                        {(user.role === 'admin' || user.permissions?.canCancelSales) && (
+                        {/* İptal Butonu - Sadece aktif satışlar için */}
+                        {(user.role === 'admin' || user.permissions?.canCancelSales) && !sale.isCancelled && (
                           <button
                             onClick={() => handleCancelSale(sale._id)}
-                            className={`px-3 py-1 rounded-full text-xs font-medium ${
-                              sale.isCancelled
-                                ? 'bg-green-100 text-green-800'
-                                : 'bg-red-100 text-red-800'
-                            }`}
+                            className="px-3 py-1 rounded-full text-xs font-medium bg-red-100 text-red-800 hover:bg-red-200"
                           >
-                            {sale.isCancelled ? 'İptal Kaldır' : 'İptal Et'}
+                            İptal Et
                           </button>
+                        )}
+                        
+                        {/* İptal Edildi Göstergesi */}
+                        {sale.isCancelled && (
+                          <span className="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-800">
+                            İptal Edildi
+                          </span>
                         )}
                         
                         {/* Prim Ödeme Butonu */}

@@ -519,13 +519,17 @@ router.post('/:id/cancel', auth, async (req, res) => {
       });
     }
 
-    sale.isCancelled = !sale.isCancelled;
-    if (sale.isCancelled) {
+    // Sadece iptal et, iptali kaldırma
+    if (!sale.isCancelled) {
+      sale.isCancelled = true;
       sale.cancelledBy = req.user._id;
       sale.cancelledAt = new Date();
     } else {
-      sale.cancelledBy = undefined;
-      sale.cancelledAt = undefined;
+      // Zaten iptal edilmiş, işlem yapma
+      return res.status(400).json({
+        success: false,
+        message: 'Bu satış zaten iptal edilmiş'
+      });
     }
 
     await sale.save();
@@ -560,6 +564,74 @@ router.post('/:id/cancel', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Satış iptal edilirken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
+// Satış iptalini kaldır
+router.post('/:id/restore', auth, async (req, res) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: 'Satış bulunamadı'
+      });
+    }
+
+    // Admin veya iptal yetkisi olan kullanıcı iptali kaldırabilir
+    if (req.user.role !== 'admin' && !req.user.permissions?.canCancelSales) {
+      return res.status(403).json({
+        success: false,
+        message: 'Satış iptalini kaldırma yetkiniz yok'
+      });
+    }
+
+    // Sadece iptal edilmiş satışları restore et
+    if (sale.isCancelled) {
+      sale.isCancelled = false;
+      sale.cancelledBy = undefined;
+      sale.cancelledAt = undefined;
+    } else {
+      return res.status(400).json({
+        success: false,
+        message: 'Bu satış zaten aktif'
+      });
+    }
+
+    await sale.save();
+    const updatedSale = await Sale.findById(req.params.id)
+      .populate({
+        path: 'createdBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'cancelledBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'modifiedBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'paymentType',
+        select: 'name',
+        options: { strictPopulate: false }
+      });
+
+    res.json({
+      success: true,
+      data: updatedSale,
+      message: 'Satış iptali kaldırıldı'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Satış iptali kaldırılırken hata oluştu',
       error: error.message
     });
   }
