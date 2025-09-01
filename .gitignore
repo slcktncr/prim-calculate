@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+client/node_modules/
+
+# Builds and dist
+client/build/
+dist/
+coverage/
+
+# Logs and temp
+logs/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+.tmp/
+.eslintcache
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Environment / secrets
+config.env
+client/.env
+.env
+
+# App data
+uploads/
