@@ -25,7 +25,7 @@ const CancelledSales = () => {
     try {
       console.log('İptal edilmiş satışlar getiriliyor...');
       
-      const response = await axios.get('/api/sales/cancelled-sales', {
+      const response = await axios.get('/api/sales/list-cancelled', {
         headers: {
           'Authorization': `Bearer ${localStorage.getItem('token')}`
         }
