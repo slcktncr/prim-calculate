@@ -423,11 +423,155 @@ router.delete('/:id', auth, async (req, res) => {
   }
 });
 
-// İPTAL SİSTEMİ KALDIRILDI - YENİDEN YAZILACAK
+// İptal edilmiş satışları listele
+router.get('/cancelled', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', startDate, endDate } = req.query;
+    
+    let query = { isCancelled: true };
+    
+    // Admin değilse sadece kendi satışlarını göster
+    if (req.user.role !== 'admin') {
+      query.createdBy = req.user._id;
+    }
 
-// İPTAL SİSTEMİ KALDIRILDI - YENİDEN YAZILACAK
+    // Arama filtresi
+    if (search) {
+      query.$or = [
+        { customerName: { $regex: search, $options: 'i' } },
+        { customerSurname: { $regex: search, $options: 'i' } },
+        { contractNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
 
-// İPTAL SİSTEMİ KALDIRILDI - YENİDEN YAZILACAK
+    // Tarih filtresi (iptal tarihi)
+    if (startDate || endDate) {
+      query.cancelledAt = {};
+      if (startDate) query.cancelledAt.$gte = new Date(startDate);
+      if (endDate) query.cancelledAt.$lte = new Date(endDate);
+    }
+
+    const skip = (page - 1) * limit;
+    
+    const sales = await Sale.find(query)
+      .populate({
+        path: 'createdBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'cancelledBy',
+        select: 'firstName lastName',
+        options: { strictPopulate: false }
+      })
+      .populate({
+        path: 'paymentType',
+        select: 'name',
+        options: { strictPopulate: false }
+      })
+      .sort({ cancelledAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+    const total = await Sale.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        sales,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'İptal edilmiş satışlar listelenirken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
+// Satış iptal et
+router.post('/:id/cancel', auth, async (req, res) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: 'Satış bulunamadı'
+      });
+    }
+
+    // Zaten iptal edilmişse hata ver
+    if (sale.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bu satış zaten iptal edilmiş'
+      });
+    }
+
+    // İptal et
+    sale.isCancelled = true;
+    sale.cancelledBy = req.user._id;
+    sale.cancelledAt = new Date();
+
+    await sale.save();
+
+    res.json({
+      success: true,
+      message: 'Satış iptal edildi'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Satış iptal edilirken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
+// Satış iptalini geri al
+router.post('/:id/restore', auth, async (req, res) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: 'Satış bulunamadı'
+      });
+    }
+
+    // Zaten aktifse hata ver
+    if (!sale.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'Bu satış zaten aktif'
+      });
+    }
+
+    // İptali geri al
+    sale.isCancelled = false;
+    sale.cancelledBy = undefined;
+    sale.cancelledAt = undefined;
+
+    await sale.save();
+
+    res.json({
+      success: true,
+      message: 'Satış iptali geri alındı'
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Satış iptali geri alınırken hata oluştu',
+      error: error.message
+    });
+  }
+});
 
 // Mevcut satışların prim hesaplamalarını yeniden hesapla (admin için)
 router.post('/recalculate-commissions', auth, async (req, res) => {

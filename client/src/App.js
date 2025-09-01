@@ -11,7 +11,7 @@ import UsersPage from './pages/Users';
 import CommissionSettings from './pages/CommissionSettings';
 import AgentCommissions from './pages/AgentCommissions';
 import PaymentTypes from './pages/PaymentTypes';
-// İPTAL SİSTEMİ KALDIRILDI
+import CancelledSales from './pages/CancelledSales';
 import CommissionPeriods from './pages/CommissionPeriods';
 import SetupAdmin from './pages/SetupAdmin';
 
@@ -126,7 +126,11 @@ const AppContent = () => {
             <PaymentTypes />
           </ProtectedRoute>
         } />
-        {/* İPTAL SİSTEMİ KALDIRILDI */}
+        <Route path="/cancelled-sales" element={
+          <ProtectedRoute>
+            <CancelledSales />
+          </ProtectedRoute>
+        } />
         <Route path="/commission-periods" element={
           <ProtectedRoute adminOnly>
             <CommissionPeriods />

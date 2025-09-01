@@ -26,7 +26,7 @@ const Layout = ({ children }) => {
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: Home },
     { name: 'Satışlar', href: '/sales', icon: ShoppingCart },
-    // İPTAL SİSTEMİ KALDIRILDI
+    { name: 'İptal Edilenler', href: '/cancelled-sales', icon: AlertTriangle },
     { name: 'Raporlar', href: '/reports', icon: BarChart3 },
           ...(isAdmin ? [
         { name: 'Kullanıcılar', href: '/users', icon: Users },
