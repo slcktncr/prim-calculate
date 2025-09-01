@@ -13,7 +13,8 @@ import {
   Settings,
   TrendingUp,
   CreditCard,
-  AlertTriangle
+  AlertTriangle,
+  Calendar
 } from 'lucide-react';
 
 const Layout = ({ children }) => {
@@ -27,12 +28,13 @@ const Layout = ({ children }) => {
     { name: 'Satışlar', href: '/sales', icon: ShoppingCart },
     { name: 'İptal Edilenler', href: '/cancelled-sales', icon: AlertTriangle },
     { name: 'Raporlar', href: '/reports', icon: BarChart3 },
-    ...(isAdmin ? [
-          { name: 'Kullanıcılar', href: '/users', icon: Users },
-    { name: 'Prim Oranı', href: '/commission-settings', icon: Settings },
-    { name: 'Temsilci Primleri', href: '/agent-commissions', icon: TrendingUp },
-    { name: 'Ödeme Tipleri', href: '/payment-types', icon: CreditCard }
-    ] : [])
+          ...(isAdmin ? [
+        { name: 'Kullanıcılar', href: '/users', icon: Users },
+        { name: 'Prim Oranı', href: '/commission-settings', icon: Settings },
+        { name: 'Temsilci Primleri', href: '/agent-commissions', icon: TrendingUp },
+        { name: 'Ödeme Tipleri', href: '/payment-types', icon: CreditCard },
+        { name: 'Hakediş Dönemleri', href: '/commission-periods', icon: Calendar }
+      ] : [])
   ];
 
   const handleLogout = () => {

@@ -12,6 +12,7 @@ import CommissionSettings from './pages/CommissionSettings';
 import AgentCommissions from './pages/AgentCommissions';
 import PaymentTypes from './pages/PaymentTypes';
 import CancelledSales from './pages/CancelledSales';
+import CommissionPeriods from './pages/CommissionPeriods';
 import SetupAdmin from './pages/SetupAdmin';
 
 // Protected Route bileşeni
@@ -128,6 +129,11 @@ const AppContent = () => {
         <Route path="/cancelled-sales" element={
           <ProtectedRoute>
             <CancelledSales />
+          </ProtectedRoute>
+        } />
+        <Route path="/commission-periods" element={
+          <ProtectedRoute adminOnly>
+            <CommissionPeriods />
           </ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

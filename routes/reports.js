@@ -28,6 +28,18 @@ router.get('/statistics', auth, async (req, res) => {
 
     const sales = await Sale.find(query).populate('createdBy', 'firstName lastName');
 
+    // İptal edilmiş satışları da al
+    let cancelQuery = { isCancelled: true };
+    if (req.user.role !== 'admin') {
+      cancelQuery.createdBy = req.user._id;
+    }
+    if (startDate || endDate) {
+      cancelQuery.cancelledAt = {};
+      if (startDate) cancelQuery.cancelledAt.$gte = new Date(startDate);
+      if (endDate) cancelQuery.cancelledAt.$lte = new Date(endDate);
+    }
+    const cancelledSales = await Sale.find(cancelQuery).populate('createdBy', 'firstName lastName');
+
     // Toplam değerler
     const totalSales = sales.reduce((sum, sale) => sum + sale.activitySalePrice, 0);
     const totalCommission = sales.reduce((sum, sale) => sum + sale.commission, 0);
@@ -38,6 +50,13 @@ router.get('/statistics', auth, async (req, res) => {
     const totalAdjustments = sales.reduce((sum, sale) => sum + (sale.commissionAdjustment || 0), 0);
     const positiveAdjustments = sales.filter(sale => (sale.commissionAdjustment || 0) > 0).reduce((sum, sale) => sum + sale.commissionAdjustment, 0);
     const negativeAdjustments = sales.filter(sale => (sale.commissionAdjustment || 0) < 0).reduce((sum, sale) => sum + Math.abs(sale.commissionAdjustment), 0);
+    
+    // İptal istatistikleri
+    const totalCancelledSales = cancelledSales.reduce((sum, sale) => sum + sale.activitySalePrice, 0);
+    const totalCancelledCommission = cancelledSales.reduce((sum, sale) => sum + sale.commission, 0);
+    const cancellationRate = (sales.length + cancelledSales.length) > 0 
+      ? ((cancelledSales.length / (sales.length + cancelledSales.length)) * 100).toFixed(2)
+      : 0;
 
     // Aylık dağılım
     const monthlyData = {};
@@ -118,7 +137,12 @@ router.get('/statistics', auth, async (req, res) => {
             totalAdjustments,
             positiveAdjustments,
             negativeAdjustments,
-            netAdjustment: positiveAdjustments - negativeAdjustments
+            netAdjustment: positiveAdjustments - negativeAdjustments,
+            // İptal istatistikleri
+            cancelledSalesCount: cancelledSales.length,
+            totalCancelledSales,
+            totalCancelledCommission,
+            cancellationRate
           },
           monthlyData,
           userData: Object.values(userData),

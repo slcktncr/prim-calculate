@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useAuth } from '../contexts/AuthContext';
 import axios from 'axios';
 import { toast } from 'react-hot-toast';
-import { Download, BarChart3, TrendingUp, DollarSign, Users, Calendar, Trophy } from 'lucide-react';
+import { Download, BarChart3, TrendingUp, DollarSign, Users, Calendar, Trophy, AlertTriangle } from 'lucide-react';
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer, BarChart, Bar, PieChart, Pie, Cell } from 'recharts';
 import { format } from 'date-fns';
 import { tr } from 'date-fns/locale';
@@ -153,7 +153,7 @@ const Reports = () => {
       {statistics && (
         <>
           {/* İstatistik Kartları */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4 mb-8">
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -207,9 +207,43 @@ const Reports = () => {
                      ₺{parseFloat(statistics?.summary?.averageSalePrice || 0).toLocaleString('tr-TR')}
                    </p>
                 </div>
-                          </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex items-center">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <AlertTriangle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">İptal Edilen</p>
+                  <p className="text-2xl font-semibold text-gray-900">
+                    {statistics?.summary?.cancelledSalesCount || 0}
+                  </p>
+                  <p className="text-xs text-red-600">
+                    %{statistics?.summary?.cancellationRate || 0} iptal oranı
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex items-center">
+                <div className="p-2 bg-gray-100 rounded-lg">
+                  <TrendingUp className="h-6 w-6 text-gray-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Kayıp Prim</p>
+                  <p className="text-2xl font-semibold text-red-900">
+                    ₺{parseFloat(statistics?.summary?.totalCancelledCommission || 0).toLocaleString('tr-TR')}
+                  </p>
+                  <p className="text-xs text-gray-500">
+                    İptallerden kaynaklı
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
-        </div>
 
         {/* Şampiyonlar */}
         {statistics?.topSalesChampion || statistics?.topCommissionChampion ? (
