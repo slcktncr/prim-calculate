@@ -36,6 +36,8 @@ router.get('/', auth, async (req, res) => {
     
     const sales = await Sale.find(query)
       .populate('createdBy', 'firstName lastName')
+      .populate('modifiedBy', 'firstName lastName')
+      .populate('paymentType', 'name')
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(parseInt(limit));
@@ -237,7 +239,7 @@ router.post('/', auth, async (req, res) => {
   }
 });
 
-// Satış güncelle
+// Satış güncelle (basit güncelleme - değişiklik tracking yok)
 router.put('/:id', auth, async (req, res) => {
   try {
     const sale = await Sale.findById(req.params.id);
@@ -277,6 +279,114 @@ router.put('/:id', auth, async (req, res) => {
   }
 });
 
+// Satış değişikliği yap (tracking ile)
+router.post('/:id/modify', auth, async (req, res) => {
+  try {
+    const sale = await Sale.findById(req.params.id);
+
+    if (!sale) {
+      return res.status(404).json({
+        success: false,
+        message: 'Satış bulunamadı'
+      });
+    }
+
+    // İptal edilmiş satışlar değiştirilemez
+    if (sale.isCancelled) {
+      return res.status(400).json({
+        success: false,
+        message: 'İptal edilmiş satışlar değiştirilemez'
+      });
+    }
+
+    // Kullanıcı sadece kendi satışlarını veya admin ise tümünü değiştirebilir
+    if (req.user.role !== 'admin' && sale.createdBy.toString() !== req.user._id.toString()) {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu satışı değiştirme yetkiniz bulunmamaktadır'
+      });
+    }
+
+    const { blockNumber, apartmentNumber, listPrice, activitySalePrice, contractNumber, modificationNote } = req.body;
+
+    // Zorunlu not kontrolü
+    if (!modificationNote || modificationNote.trim() === '') {
+      return res.status(400).json({
+        success: false,
+        message: 'Değişiklik notu zorunludur'
+      });
+    }
+
+    // Orijinal verileri sakla (ilk değişiklik ise)
+    if (!sale.isModified) {
+      sale.originalData = {
+        blockNumber: sale.blockNumber,
+        apartmentNumber: sale.apartmentNumber,
+        listPrice: sale.listPrice,
+        activitySalePrice: sale.activitySalePrice,
+        contractNumber: sale.contractNumber,
+        commission: sale.commission
+      };
+    }
+
+    // Eski komisyon değeri
+    const oldCommission = sale.commission;
+
+    // Yeni verileri ata
+    if (blockNumber !== undefined) sale.blockNumber = blockNumber;
+    if (apartmentNumber !== undefined) sale.apartmentNumber = apartmentNumber;
+    if (listPrice !== undefined) sale.listPrice = listPrice;
+    if (activitySalePrice !== undefined) sale.activitySalePrice = activitySalePrice;
+    if (contractNumber !== undefined) sale.contractNumber = contractNumber;
+
+    // Yeni komisyon hesapla
+    const basePrice = Math.min(sale.listPrice || 0, sale.activitySalePrice || 0);
+    const newCommission = basePrice * (sale.commissionRate / 100);
+    sale.commission = newCommission;
+
+    // Komisyon farkını hesapla
+    const commissionDifference = newCommission - oldCommission;
+    sale.commissionAdjustment = (sale.commissionAdjustment || 0) + commissionDifference;
+    
+    if (commissionDifference !== 0) {
+      sale.commissionAdjustmentReason = commissionDifference > 0 
+        ? 'Değişiklik sonrası ekleme'
+        : 'Değişiklik sonrası kesinti';
+    }
+
+    // Değişiklik bilgilerini kaydet
+    sale.isModified = true;
+    sale.modifiedBy = req.user._id;
+    sale.modifiedAt = new Date();
+    sale.modificationNote = modificationNote;
+
+    await sale.save();
+
+    const populatedSale = await Sale.findById(sale._id)
+      .populate('createdBy', 'firstName lastName')
+      .populate('modifiedBy', 'firstName lastName')
+      .populate('paymentType', 'name');
+
+    res.json({
+      success: true,
+      message: 'Satış değişikliği başarıyla kaydedildi',
+      data: populatedSale,
+      commissionChange: {
+        oldCommission,
+        newCommission,
+        difference: commissionDifference,
+        type: commissionDifference > 0 ? 'increase' : commissionDifference < 0 ? 'decrease' : 'no_change'
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Satış değişikliği yapılırken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
 // Satış sil (soft delete)
 router.delete('/:id', auth, async (req, res) => {
   try {
@@ -308,6 +418,67 @@ router.delete('/:id', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Satış silinirken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
+// İptal edilmiş satışları listele
+router.get('/cancelled', auth, async (req, res) => {
+  try {
+    const { page = 1, limit = 10, search = '', startDate, endDate } = req.query;
+    
+    let query = { isCancelled: true };
+    
+    // Admin değilse sadece kendi satışlarını göster
+    if (req.user.role !== 'admin') {
+      query.createdBy = req.user._id;
+    }
+
+    // Arama filtresi
+    if (search) {
+      query.$or = [
+        { customerName: { $regex: search, $options: 'i' } },
+        { customerSurname: { $regex: search, $options: 'i' } },
+        { contractNumber: { $regex: search, $options: 'i' } }
+      ];
+    }
+
+    // Tarih filtresi (iptal tarihi)
+    if (startDate || endDate) {
+      query.cancelledAt = {};
+      if (startDate) query.cancelledAt.$gte = new Date(startDate);
+      if (endDate) query.cancelledAt.$lte = new Date(endDate);
+    }
+
+    const skip = (page - 1) * limit;
+    
+    const sales = await Sale.find(query)
+      .populate('createdBy', 'firstName lastName')
+      .populate('cancelledBy', 'firstName lastName')
+      .populate('paymentType', 'name')
+      .sort({ cancelledAt: -1 })
+      .skip(skip)
+      .limit(parseInt(limit));
+
+    const total = await Sale.countDocuments(query);
+
+    res.json({
+      success: true,
+      data: {
+        sales,
+        pagination: {
+          currentPage: parseInt(page),
+          totalPages: Math.ceil(total / limit),
+          totalItems: total,
+          itemsPerPage: parseInt(limit)
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'İptal edilmiş satışlar listelenirken hata oluştu',
       error: error.message
     });
   }
@@ -353,6 +524,55 @@ router.post('/:id/cancel', auth, async (req, res) => {
     res.status(500).json({
       success: false,
       message: 'Satış iptal edilirken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
+// Mevcut satışların prim hesaplamalarını yeniden hesapla (admin için)
+router.post('/recalculate-commissions', auth, async (req, res) => {
+  try {
+    // Sadece admin bu işlemi yapabilir
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu işlem için admin yetkisi gereklidir'
+      });
+    }
+
+    // Tüm aktif satışları al
+    const sales = await Sale.find({ isActive: true, isCancelled: false });
+    let updatedCount = 0;
+
+    // Her satış için yeni prim hesaplama mantığını uygula
+    for (const sale of sales) {
+      const oldCommission = sale.commission;
+      
+      // Yeni hesaplama: liste fiyatı ve aktivite satış fiyatından düşük olanı kullan
+      const basePrice = Math.min(sale.listPrice || 0, sale.activitySalePrice || 0);
+      const newCommission = basePrice * (sale.commissionRate / 100);
+      
+      // Eğer değişiklik varsa güncelle
+      if (Math.abs(oldCommission - newCommission) > 0.01) {
+        sale.commission = newCommission;
+        await sale.save();
+        updatedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `${updatedCount} adet satışın primi yeniden hesaplandı`,
+      data: {
+        totalSales: sales.length,
+        updatedSales: updatedCount,
+        skippedSales: sales.length - updatedCount
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'Prim yeniden hesaplama işlemi sırasında hata oluştu',
       error: error.message
     });
   }

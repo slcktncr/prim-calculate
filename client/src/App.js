@@ -10,6 +10,8 @@ import Reports from './pages/Reports';
 import UsersPage from './pages/Users';
 import CommissionSettings from './pages/CommissionSettings';
 import AgentCommissions from './pages/AgentCommissions';
+import PaymentTypes from './pages/PaymentTypes';
+import CancelledSales from './pages/CancelledSales';
 import SetupAdmin from './pages/SetupAdmin';
 
 // Protected Route bileşeni
@@ -116,6 +118,16 @@ const AppContent = () => {
         <Route path="/agent-commissions" element={
           <ProtectedRoute>
             <AgentCommissions />
+          </ProtectedRoute>
+        } />
+        <Route path="/payment-types" element={
+          <ProtectedRoute adminOnly>
+            <PaymentTypes />
+          </ProtectedRoute>
+        } />
+        <Route path="/cancelled-sales" element={
+          <ProtectedRoute>
+            <CancelledSales />
           </ProtectedRoute>
         } />
         <Route path="/" element={<Navigate to="/dashboard" replace />} />

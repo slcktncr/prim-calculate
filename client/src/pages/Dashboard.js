@@ -6,7 +6,9 @@ import {
   ShoppingCart, 
   DollarSign,
   Calendar,
-  BarChart3
+  BarChart3,
+  Settings,
+  AlertTriangle
 } from 'lucide-react';
 import axios from 'axios';
 import { format } from 'date-fns';
@@ -86,7 +88,7 @@ const Dashboard = () => {
       </div>
 
       {/* İstatistik kartları */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
         <StatCard
           title="Toplam Satış"
           value={stats?.summary?.salesCount || 0}
@@ -110,6 +112,18 @@ const Dashboard = () => {
           value={formatCurrency(stats?.summary?.averageSalePrice || 0)}
           icon={BarChart3}
           color="bg-orange-500"
+        />
+        <StatCard
+          title="Değiştirilmiş Satış"
+          value={`${stats?.summary?.modifiedSalesCount || 0} (%${stats?.summary?.modificationRate || 0})`}
+          icon={Settings}
+          color="bg-yellow-500"
+        />
+        <StatCard
+          title="Net Prim Ayarı"
+          value={formatCurrency(stats?.summary?.netAdjustment || 0)}
+          icon={AlertTriangle}
+          color={stats?.summary?.netAdjustment >= 0 ? "bg-green-500" : "bg-red-500"}
         />
       </div>
 

@@ -7,6 +7,104 @@ const moment = require('moment');
 
 const router = express.Router();
 
+// İptal edilen satışlar raporu (temsilci bazında)
+router.get('/cancelled-sales', auth, async (req, res) => {
+  try {
+    const { startDate, endDate } = req.query;
+    
+    let query = { isCancelled: true };
+    
+    // Tarih filtresi
+    if (startDate || endDate) {
+      query.cancelledAt = {};
+      if (startDate) query.cancelledAt.$gte = new Date(startDate);
+      if (endDate) query.cancelledAt.$lte = new Date(endDate);
+    }
+
+    const cancelledSales = await Sale.find(query)
+      .populate('createdBy', 'firstName lastName')
+      .populate('cancelledBy', 'firstName lastName')
+      .populate('paymentType', 'name')
+      .sort({ cancelledAt: -1 });
+
+    // Temsilci bazında grupla
+    const agentData = {};
+    let totalCancelledCommission = 0;
+
+    cancelledSales.forEach(sale => {
+      const userId = sale.createdBy._id.toString();
+      const userName = `${sale.createdBy.firstName} ${sale.createdBy.lastName}`;
+      
+      if (!agentData[userId]) {
+        agentData[userId] = {
+          id: userId,
+          name: userName,
+          cancelledSales: 0,
+          cancelledCommission: 0,
+          cancelledCount: 0,
+          cancellationRate: 0,
+          cancelledSalesList: []
+        };
+      }
+      
+      agentData[userId].cancelledSales += sale.activitySalePrice;
+      agentData[userId].cancelledCommission += sale.commission;
+      agentData[userId].cancelledCount += 1;
+      totalCancelledCommission += sale.commission;
+      
+      agentData[userId].cancelledSalesList.push({
+        customerName: `${sale.customerName} ${sale.customerSurname}`,
+        cancelledDate: sale.cancelledAt,
+        salePrice: sale.activitySalePrice,
+        commission: sale.commission,
+        cancelledBy: sale.cancelledBy ? `${sale.cancelledBy.firstName} ${sale.cancelledBy.lastName}` : 'Bilinmiyor',
+        contractNumber: sale.contractNumber,
+        paymentType: sale.paymentType?.name || 'Belirtilmemiş'
+      });
+    });
+
+    // Her temsilci için iptal oranını hesapla
+    for (const userId in agentData) {
+      const totalSalesCount = await Sale.countDocuments({ 
+        createdBy: userId, 
+        isActive: true 
+      });
+      const cancelledCount = agentData[userId].cancelledCount;
+      agentData[userId].cancellationRate = totalSalesCount > 0 
+        ? ((cancelledCount / (totalSalesCount + cancelledCount)) * 100).toFixed(2)
+        : 0;
+    }
+
+    const agentArray = Object.values(agentData).sort((a, b) => b.cancelledCommission - a.cancelledCommission);
+
+    res.json({
+      success: true,
+      data: {
+        agents: agentArray,
+        summary: {
+          totalAgents: agentArray.length,
+          totalCancelledSales: cancelledSales.reduce((sum, sale) => sum + sale.activitySalePrice, 0),
+          totalCancelledCommission: totalCancelledCommission,
+          totalCancelledCount: cancelledSales.length,
+          averageCancellationRate: agentArray.length > 0 
+            ? (agentArray.reduce((sum, agent) => sum + parseFloat(agent.cancellationRate), 0) / agentArray.length).toFixed(2)
+            : 0
+        },
+        dateRange: {
+          startDate: startDate ? new Date(startDate) : null,
+          endDate: endDate ? new Date(endDate) : null
+        }
+      }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      message: 'İptal raporu oluşturulurken hata oluştu',
+      error: error.message
+    });
+  }
+});
+
 // Temsilci primleri raporu
 router.get('/agent-commissions', auth, async (req, res) => {
   try {
@@ -35,6 +133,24 @@ router.get('/agent-commissions', auth, async (req, res) => {
       .populate('createdBy', 'firstName lastName')
       .sort({ saleDate: -1 });
 
+    // İptal edilen satışları da al (aynı filtrelerle)
+    let cancelQuery = { isCancelled: true };
+    if (req.user.role !== 'admin') {
+      cancelQuery.createdBy = req.user._id;
+    }
+    if (agentId && req.user.role === 'admin') {
+      cancelQuery.createdBy = agentId;
+    }
+    if (startDate || endDate) {
+      cancelQuery.cancelledAt = {};
+      if (startDate) cancelQuery.cancelledAt.$gte = new Date(startDate);
+      if (endDate) cancelQuery.cancelledAt.$lte = new Date(endDate);
+    }
+
+    const cancelledSales = await Sale.find(cancelQuery)
+      .populate('createdBy', 'firstName lastName')
+      .sort({ cancelledAt: -1 });
+
     // Temsilci bazında grupla
     const agentData = {};
     sales.forEach(sale => {
@@ -50,6 +166,9 @@ router.get('/agent-commissions', auth, async (req, res) => {
           count: 0,
           paidCommission: 0,
           unpaidCommission: 0,
+          cancelledCommission: 0,
+          cancelledCount: 0,
+          netCommission: 0,
           salesList: []
         };
       }
@@ -74,7 +193,37 @@ router.get('/agent-commissions', auth, async (req, res) => {
       });
     });
 
-    const agentArray = Object.values(agentData).sort((a, b) => b.commission - a.commission);
+    // İptal edilen satışları işle
+    cancelledSales.forEach(sale => {
+      const userId = sale.createdBy._id.toString();
+      const userName = `${sale.createdBy.firstName} ${sale.createdBy.lastName}`;
+      
+      if (!agentData[userId]) {
+        agentData[userId] = {
+          id: userId,
+          name: userName,
+          sales: 0,
+          commission: 0,
+          count: 0,
+          paidCommission: 0,
+          unpaidCommission: 0,
+          cancelledCommission: 0,
+          cancelledCount: 0,
+          netCommission: 0,
+          salesList: []
+        };
+      }
+      
+      agentData[userId].cancelledCommission += sale.commission;
+      agentData[userId].cancelledCount += 1;
+    });
+
+    // Net komisyon hesapla (komisyon - iptal edilen komisyon)
+    Object.keys(agentData).forEach(userId => {
+      agentData[userId].netCommission = agentData[userId].commission - agentData[userId].cancelledCommission;
+    });
+
+    const agentArray = Object.values(agentData).sort((a, b) => b.netCommission - a.netCommission);
 
     res.json({
       success: true,
@@ -84,8 +233,11 @@ router.get('/agent-commissions', auth, async (req, res) => {
           totalAgents: agentArray.length,
           totalSales: sales.reduce((sum, sale) => sum + sale.activitySalePrice, 0),
           totalCommission: sales.reduce((sum, sale) => sum + sale.commission, 0),
+          totalCancelledCommission: agentArray.reduce((sum, agent) => sum + agent.cancelledCommission, 0),
+          totalNetCommission: agentArray.reduce((sum, agent) => sum + agent.netCommission, 0),
           totalPaidCommission: agentArray.reduce((sum, agent) => sum + agent.paidCommission, 0),
-          totalUnpaidCommission: agentArray.reduce((sum, agent) => sum + agent.unpaidCommission, 0)
+          totalUnpaidCommission: agentArray.reduce((sum, agent) => sum + agent.unpaidCommission, 0),
+          totalCancelledCount: cancelledSales.length
         },
         dateRange: {
           startDate: startDate ? new Date(startDate) : null,

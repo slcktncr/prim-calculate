@@ -146,7 +146,7 @@ const AgentCommissions = () => {
       {data && (
         <>
           {/* Özet Kartları */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center">
                 <div className="p-2 bg-blue-100 rounded-lg">
@@ -191,6 +191,34 @@ const AgentCommissions = () => {
 
             <div className="bg-white p-6 rounded-lg shadow-sm">
               <div className="flex items-center">
+                <div className="p-2 bg-red-100 rounded-lg">
+                  <XCircle className="h-6 w-6 text-red-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">İptal Kesintisi</p>
+                  <p className="text-2xl font-semibold text-red-900">
+                    -₺{parseFloat(data.summary.totalCancelledCommission || 0).toLocaleString('tr-TR')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex items-center">
+                <div className="p-2 bg-green-100 rounded-lg">
+                  <CheckCircle className="h-6 w-6 text-green-600" />
+                </div>
+                <div className="ml-4">
+                  <p className="text-sm font-medium text-gray-600">Net Prim</p>
+                  <p className="text-2xl font-semibold text-green-900">
+                    ₺{parseFloat(data.summary.totalNetCommission || 0).toLocaleString('tr-TR')}
+                  </p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white p-6 rounded-lg shadow-sm">
+              <div className="flex items-center">
                 <div className="p-2 bg-orange-100 rounded-lg">
                   <Calendar className="h-6 w-6 text-orange-600" />
                 </div>
@@ -226,6 +254,12 @@ const AgentCommissions = () => {
                       Toplam Prim
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      İptal Kesintisi
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                      Net Prim
+                    </th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
                       Ödenen Prim
                     </th>
                     <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
@@ -254,6 +288,21 @@ const AgentCommissions = () => {
                       <td className="px-6 py-4 whitespace-nowrap">
                         <div className="text-sm text-gray-900">
                           ₺{parseFloat(agent.commission).toLocaleString('tr-TR')}
+                        </div>
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className="text-sm text-red-600 font-medium">
+                          {agent.cancelledCommission > 0 ? `-₺${parseFloat(agent.cancelledCommission).toLocaleString('tr-TR')}` : '₺0'}
+                        </div>
+                        {agent.cancelledCount > 0 && (
+                          <div className="text-xs text-gray-500">
+                            {agent.cancelledCount} iptal
+                          </div>
+                        )}
+                      </td>
+                      <td className="px-6 py-4 whitespace-nowrap">
+                        <div className={`text-sm font-medium ${agent.netCommission >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                          ₺{parseFloat(agent.netCommission || 0).toLocaleString('tr-TR')}
                         </div>
                       </td>
                       <td className="px-6 py-4 whitespace-nowrap">

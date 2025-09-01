@@ -32,6 +32,12 @@ router.get('/statistics', auth, async (req, res) => {
     const totalSales = sales.reduce((sum, sale) => sum + sale.activitySalePrice, 0);
     const totalCommission = sales.reduce((sum, sale) => sum + sale.commission, 0);
     const totalListPrice = sales.reduce((sum, sale) => sum + sale.listPrice, 0);
+    
+    // Modification ve adjustment istatistikleri
+    const modifiedSales = sales.filter(sale => sale.isModified);
+    const totalAdjustments = sales.reduce((sum, sale) => sum + (sale.commissionAdjustment || 0), 0);
+    const positiveAdjustments = sales.filter(sale => (sale.commissionAdjustment || 0) > 0).reduce((sum, sale) => sum + sale.commissionAdjustment, 0);
+    const negativeAdjustments = sales.filter(sale => (sale.commissionAdjustment || 0) < 0).reduce((sum, sale) => sum + Math.abs(sale.commissionAdjustment), 0);
 
     // Aylık dağılım
     const monthlyData = {};
@@ -105,7 +111,14 @@ router.get('/statistics', auth, async (req, res) => {
             highestSaleCustomer: highestSaleCustomer ? 
               `${highestSaleCustomer.customerName} ${highestSaleCustomer.customerSurname}` : 'N/A',
             lowestSaleCustomer: lowestSaleCustomer ? 
-              `${lowestSaleCustomer.customerName} ${lowestSaleCustomer.customerSurname}` : 'N/A'
+              `${lowestSaleCustomer.customerName} ${lowestSaleCustomer.customerSurname}` : 'N/A',
+            // Modification istatistikleri
+            modifiedSalesCount: modifiedSales.length,
+            modificationRate: sales.length > 0 ? ((modifiedSales.length / sales.length) * 100).toFixed(2) : 0,
+            totalAdjustments,
+            positiveAdjustments,
+            negativeAdjustments,
+            netAdjustment: positiveAdjustments - negativeAdjustments
           },
           monthlyData,
           userData: Object.values(userData),

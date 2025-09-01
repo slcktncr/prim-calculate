@@ -46,6 +46,11 @@ const saleSchema = new mongoose.Schema({
     unique: true,
     trim: true
   },
+  paymentType: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'PaymentType',
+    required: [true, 'Ödeme tipi zorunludur']
+  },
   commissionRate: {
     type: Number,
     default: 1.0,
@@ -56,8 +61,9 @@ const saleSchema = new mongoose.Schema({
     type: Number,
     required: true,
     default: function() {
-      // Aktivite satış fiyatının belirlenen oranı
-      return this.activitySalePrice * (this.commissionRate / 100);
+      // Liste fiyatı ve aktivite satış fiyatından düşük olanı kullan
+      const basePrice = Math.min(this.listPrice || 0, this.activitySalePrice || 0);
+      return basePrice * (this.commissionRate / 100);
     }
   },
   createdBy: {
@@ -90,6 +96,40 @@ const saleSchema = new mongoose.Schema({
   },
   commissionPaidAt: {
     type: Date
+  },
+  // Değişiklik tracking
+  isModified: {
+    type: Boolean,
+    default: false
+  },
+  modifiedBy: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'User'
+  },
+  modifiedAt: {
+    type: Date
+  },
+  modificationNote: {
+    type: String,
+    trim: true
+  },
+  // Orijinal veriler (değişiklik öncesi)
+  originalData: {
+    blockNumber: String,
+    apartmentNumber: String,
+    listPrice: Number,
+    activitySalePrice: Number,
+    contractNumber: String,
+    commission: Number
+  },
+  // Prim ayarlamaları
+  commissionAdjustment: {
+    type: Number,
+    default: 0 // Pozitif: ekleme, Negatif: kesinti
+  },
+  commissionAdjustmentReason: {
+    type: String,
+    trim: true
   }
 }, {
   timestamps: true

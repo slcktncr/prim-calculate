@@ -11,6 +11,7 @@ const salesRoutes = require('./routes/sales');
 const reportRoutes = require('./routes/reports');
 const commissionRoutes = require('./routes/commission');
 const commissionReportRoutes = require('./routes/commission-reports');
+const paymentTypeRoutes = require('./routes/payment-types');
 
 const app = express();
 const PORT = process.env.PORT || 5000;
@@ -39,6 +40,7 @@ app.use('/api/sales', salesRoutes);
 app.use('/api/reports', reportRoutes);
 app.use('/api/commission', commissionRoutes);
 app.use('/api/commission-reports', commissionReportRoutes);
+app.use('/api/payment-types', paymentTypeRoutes);
 
 // React app için catch-all route
 app.get('*', (req, res) => {
