@@ -122,7 +122,7 @@ const saleSchema = new mongoose.Schema({
   },
   
   // Değişiklik tracking
-  isModified: {
+  hasModifications: {
     type: Boolean,
     default: false
   },

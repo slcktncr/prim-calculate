@@ -485,7 +485,7 @@ const Sales = () => {
                       <div>
                         <div className="text-sm font-medium text-gray-900 flex items-center gap-2">
                           {sale.customerName} {sale.customerSurname}
-                          {sale.isModified && (
+                          {sale.hasModifications && (
                             <div className="flex items-center gap-1">
                               <AlertCircle 
                                 size={14} 
@@ -501,7 +501,7 @@ const Sales = () => {
                         </div>
                         <div className="text-sm text-gray-500">
                           {sale.createdBy?.firstName} {sale.createdBy?.lastName}
-                          {sale.isModified && sale.modifiedAt && (
+                          {sale.hasModifications && sale.modifiedAt && (
                             <span className="text-xs text-orange-600 ml-2">
                               (değiştirildi: {format(new Date(sale.modifiedAt), 'dd.MM.yyyy', { locale: tr })})
                             </span>
@@ -664,7 +664,7 @@ const Sales = () => {
                     <span className="text-gray-500">Aktivite Fiyatı:</span> ₺{modifyingSale.activitySalePrice?.toLocaleString('tr-TR')}
                   </div>
                 </div>
-                {modifyingSale.isModified && (
+                {modifyingSale.hasModifications && (
                   <div className="mt-2 text-xs text-orange-600">
                     ⚠️ Bu satışta daha önce değişiklik yapılmış
                   </div>

@@ -318,7 +318,7 @@ router.post('/:id/modify', auth, async (req, res) => {
     }
 
     // Orijinal verileri sakla (ilk değişiklik ise)
-    if (!sale.isModified) {
+    if (!sale.hasModifications) {
       sale.originalData = {
         blockNumber: sale.blockNumber,
         apartmentNumber: sale.apartmentNumber,
@@ -355,7 +355,7 @@ router.post('/:id/modify', auth, async (req, res) => {
     }
 
     // Değişiklik bilgilerini kaydet
-    sale.isModified = true;
+    sale.hasModifications = true;
     sale.modifiedBy = req.user._id;
     sale.modifiedAt = new Date();
     sale.modificationNote = modificationNote;

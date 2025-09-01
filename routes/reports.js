@@ -46,7 +46,7 @@ router.get('/statistics', auth, async (req, res) => {
     const totalListPrice = sales.reduce((sum, sale) => sum + sale.listPrice, 0);
     
     // Modification ve adjustment istatistikleri
-    const modifiedSales = sales.filter(sale => sale.isModified);
+    const modifiedSales = sales.filter(sale => sale.hasModifications);
     const totalAdjustments = sales.reduce((sum, sale) => sum + (sale.commissionAdjustment || 0), 0);
     const positiveAdjustments = sales.filter(sale => (sale.commissionAdjustment || 0) > 0).reduce((sum, sale) => sum + sale.commissionAdjustment, 0);
     const negativeAdjustments = sales.filter(sale => (sale.commissionAdjustment || 0) < 0).reduce((sum, sale) => sum + Math.abs(sale.commissionAdjustment), 0);
