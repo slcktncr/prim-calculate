@@ -738,7 +738,38 @@ router.post('/fix-phantom-cancellations', auth, async (req, res) => {
   }
 });
 
-// PRODUCTION DATA FIX - İptal verilerini düzelt
+// DATABASE RESET - Tüm satışları sıfırla  
+router.post('/reset-database', auth, async (req, res) => {
+  try {
+    if (req.user.role !== 'admin') {
+      return res.status(403).json({
+        success: false,
+        message: 'Bu işlem için admin yetkisi gerekli'
+      });
+    }
+
+    console.log('🗑️ DATABASE RESET başlıyor...');
+    
+    // Tüm satışları sil
+    const result = await Sale.deleteMany({});
+    console.log(`✅ ${result.deletedCount} adet satış silindi`);
+    
+    res.json({
+      success: true,
+      message: `Database sıfırlandı: ${result.deletedCount} kayıt silindi`,
+      data: { deletedCount: result.deletedCount }
+    });
+  } catch (error) {
+    console.error('❌ Database reset hatası:', error);
+    res.status(500).json({
+      success: false,
+      message: 'Database reset hatası',
+      error: error.message
+    });
+  }
+});
+
+// PRODUCTION DATA FIX - İptal verilerini düzelt  
 router.post('/fix-cancelled-data', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
