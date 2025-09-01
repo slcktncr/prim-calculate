@@ -25,7 +25,7 @@ const CancelledSales = () => {
     try {
       console.log('İptal edilmiş satışlar getiriliyor...');
       
-      const response = await axios.get('/api/sales/cancelled');
+      const response = await axios.get('/api/sales/cancelled-sales');
       console.log('API Response:', response.data);
       
       if (response.data.success) {

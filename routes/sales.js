@@ -424,7 +424,7 @@ router.delete('/:id', auth, async (req, res) => {
 });
 
 // İptal edilmiş satışları listele
-router.get('/cancelled', auth, async (req, res) => {
+router.get('/cancelled-sales', auth, async (req, res) => {
   try {
     const { page = 1, limit = 10, search = '', startDate, endDate } = req.query;
     
