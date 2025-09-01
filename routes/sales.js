@@ -738,15 +738,8 @@ router.post('/fix-phantom-cancellations', auth, async (req, res) => {
   }
 });
 
-// Data temizleme endpoint (admin) - sadece development
-router.post('/clean-data', auth, async (req, res) => {
-  // Production'da bu endpoint devre dışı
-  if (process.env.NODE_ENV === 'production') {
-    return res.status(404).json({
-      success: false,
-      message: 'Bu endpoint production\'da kullanılamaz'
-    });
-  }
+// PRODUCTION DATA FIX - İptal verilerini düzelt
+router.post('/fix-cancelled-data', auth, async (req, res) => {
   try {
     if (req.user.role !== 'admin') {
       return res.status(403).json({
@@ -755,40 +748,57 @@ router.post('/clean-data', auth, async (req, res) => {
       });
     }
 
-    // Tüm satışları kontrol et
-    const allSales = await Sale.find({});
-    console.log('Toplam satış sayısı:', allSales.length);
+    console.log('🚨 PRODUCTION DATA FIX başlıyor...');
     
-    const activeSales = await Sale.find({ isCancelled: { $ne: true } });
-    console.log('Aktif satış sayısı:', activeSales.length);
+    // 1. Tüm phantom iptal kayıtlarını bul
+    const phantomCancelled = await Sale.find({ isCancelled: true });
+    console.log(`📊 Bulunan iptal kayıtları: ${phantomCancelled.length}`);
     
-    const cancelledSales = await Sale.find({ isCancelled: true });
-    console.log('İptal edilmiş satış sayısı:', cancelledSales.length);
+    let fixedCount = 0;
+    let deletedCount = 0;
     
-    // İptal edilmiş satışların detayları
-    const cancelledDetails = cancelledSales.map(sale => ({
-      _id: sale._id,
-      customer: `${sale.customerName} ${sale.customerSurname}`,
-      isCancelled: sale.isCancelled,
-      cancelledAt: sale.cancelledAt,
-      cancelledBy: sale.cancelledBy
-    }));
+    for (const sale of phantomCancelled) {
+      console.log(`🔍 Kontrol: ${sale.customerName} ${sale.customerSurname}`);
+      console.log(`   - cancelledAt: ${sale.cancelledAt}`);
+      console.log(`   - cancelledBy: ${sale.cancelledBy}`);
+      console.log(`   - createdBy: ${sale.createdBy}`);
+      
+      // Eğer kritik bilgiler eksikse -> AKTIF YAP
+      if (!sale.cancelledAt || !sale.cancelledBy || !sale.createdBy) {
+        console.log(`❌ Eksik bilgi var, aktif yapılıyor...`);
+        sale.isCancelled = false;
+        sale.cancelledAt = undefined;
+        sale.cancelledBy = undefined;
+        await sale.save();
+        fixedCount++;
+      }
+      // Eğer orphan kayıt ise -> SİL
+      else if (!sale.customerName || !sale.customerSurname) {
+        console.log(`🗑️ Orphan kayıt siliniyor...`);
+        await Sale.deleteOne({ _id: sale._id });
+        deletedCount++;
+      }
+    }
     
-    console.log('İptal detayları:', JSON.stringify(cancelledDetails, null, 2));
-
+    // 2. Son durum kontrolü
+    const finalCheck = await Sale.find({ isCancelled: true });
+    console.log(`✅ Temizlik sonrası iptal sayısı: ${finalCheck.length}`);
+    
     res.json({
       success: true,
+      message: `İptal verilerí düzeltildi: ${fixedCount} düzeltildi, ${deletedCount} silindi`,
       data: {
-        totalSales: allSales.length,
-        activeSales: activeSales.length,
-        cancelledSales: cancelledSales.length,
-        cancelledDetails
+        beforeCount: phantomCancelled.length,
+        afterCount: finalCheck.length,
+        fixedCount,
+        deletedCount
       }
     });
   } catch (error) {
+    console.error('❌ Production fix hatası:', error);
     res.status(500).json({
       success: false,
-      message: 'Veri temizleme hatası',
+      message: 'Production data fix hatası',
       error: error.message
     });
   }

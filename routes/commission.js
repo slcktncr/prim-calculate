@@ -1,11 +1,11 @@
 const express = require('express');
 const CommissionRate = require('../models/CommissionRate');
-const { adminAuth } = require('../middleware/auth');
+const { auth, adminAuth } = require('../middleware/auth');
 
 const router = express.Router();
 
 // Mevcut prim oranını getir
-router.get('/current', async (req, res) => {
+router.get('/current', auth, async (req, res) => {
   try {
     const currentRate = await CommissionRate.findOne({ isActive: true }).sort({ effectiveDate: -1 });
     

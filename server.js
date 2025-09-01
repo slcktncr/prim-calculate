@@ -63,7 +63,9 @@ mongoose.connect(process.env.MONGODB_URI, {
     
     const Sale = require('./models/Sale');
     
-    // Phantom iptal kayıtlarını bul ve düzelt
+    // KOMPLE VERİ TEMİZLİĞİ: Tüm tutarsız kayıtları düzelt
+    
+    // 1. isCancelled: true ama cancelledAt/cancelledBy eksik olanlar
     const phantomCancelled = await Sale.find({
       isCancelled: true,
       $or: [
@@ -74,23 +76,8 @@ mongoose.connect(process.env.MONGODB_URI, {
       ]
     });
 
-    console.log(`📊 ${phantomCancelled.length} phantom iptal kaydı bulundu`);
-
-    let fixedCount = 0;
-    for (const sale of phantomCancelled) {
-      // Eğer iptal bilgileri eksikse, satışı aktif hale getir
-      if (!sale.cancelledAt || !sale.cancelledBy) {
-        sale.isCancelled = false;
-        sale.cancelledAt = undefined;
-        sale.cancelledBy = undefined;
-        await sale.save();
-        fixedCount++;
-        console.log(`✅ Düzeltildi: ${sale.customerName} ${sale.customerSurname}`);
-      }
-    }
-
-    // Ek kontrol: isCancelled false ama cancelledAt/cancelledBy dolu olanları temizle
-    const inconsistentSales = await Sale.find({
+    // 2. İptal field'ları var ama isCancelled false olanlar
+    const falsePositives = await Sale.find({
       isCancelled: false,
       $or: [
         { cancelledAt: { $exists: true, $ne: null } },
@@ -98,15 +85,65 @@ mongoose.connect(process.env.MONGODB_URI, {
       ]
     });
 
-    console.log(`📊 ${inconsistentSales.length} tutarsız aktif satış bulundu`);
+    // 3. Tüm ghost kayıtları bul (hiç kullanılmayan field'lar)
+    const allSales = await Sale.find({});
 
-    for (const sale of inconsistentSales) {
+    console.log(`📊 ${phantomCancelled.length} phantom iptal kaydı bulundu`);
+    console.log(`📊 ${falsePositives.length} false positive kayıt bulundu`);
+
+    let fixedCount = 0;
+    
+    // PHANTOM İPTALLER: isCancelled true ama detaylar eksik -> Aktif yap
+    for (const sale of phantomCancelled) {
+      sale.isCancelled = false;
       sale.cancelledAt = undefined;
       sale.cancelledBy = undefined;
       await sale.save();
       fixedCount++;
-      console.log(`✅ Aktif satış temizlendi: ${sale.customerName} ${sale.customerSurname}`);
+      console.log(`✅ Phantom iptal düzeltildi: ${sale.customerName} ${sale.customerSurname} -> AKTİF`);
     }
+
+    // FALSE POSİTİVE: isCancelled false ama iptal detayları var -> Temizle
+    for (const sale of falsePositives) {
+      sale.cancelledAt = undefined;
+      sale.cancelledBy = undefined;
+      await sale.save();
+      fixedCount++;
+      console.log(`✅ False positive temizlendi: ${sale.customerName} ${sale.customerSurname}`);
+    }
+
+    // TÜM KAYITLARI KONTROL ET: İptal tutarlılığı
+    let hardFixCount = 0;
+    for (const sale of allSales) {
+      let needsSave = false;
+      
+      if (sale.isCancelled) {
+        // İptal edilmiş ama detaylar eksikse -> AKTİF YAP
+        if (!sale.cancelledAt || !sale.cancelledBy) {
+          sale.isCancelled = false;
+          sale.cancelledAt = undefined;
+          sale.cancelledBy = undefined;
+          needsSave = true;
+          hardFixCount++;
+          console.log(`🔧 HARD FIX: ${sale.customerName} ${sale.customerSurname} -> AKTİF (detay eksik)`);
+        }
+      } else {
+        // Aktif ama iptal detayları varsa -> TEMİZLE
+        if (sale.cancelledAt || sale.cancelledBy) {
+          sale.cancelledAt = undefined;
+          sale.cancelledBy = undefined;
+          needsSave = true;
+          hardFixCount++;
+          console.log(`🔧 HARD FIX: ${sale.customerName} ${sale.customerSurname} -> TEMİZLENDİ`);
+        }
+      }
+      
+      if (needsSave) {
+        await sale.save();
+      }
+    }
+
+    console.log(`🔧 HARD FIX: ${hardFixCount} kayıt düzeltildi`);
 
     // İstatistikleri logla
     const totalSales = await Sale.countDocuments({});
@@ -115,6 +152,15 @@ mongoose.connect(process.env.MONGODB_URI, {
     
     console.log(`📈 Veri Durumu: Toplam:${totalSales} Aktif:${activeSales} İptal:${cancelledSales} Düzeltilen:${fixedCount}`);
     console.log('✅ Otomatik veri temizliği tamamlandı!');
+    
+    // Detaylı debug için iptal edilenler listesi
+    if (cancelledSales > 0) {
+      const stillCancelled = await Sale.find({ isCancelled: true });
+      console.log('🔍 Hâlâ iptal edilmiş kayıtlar:');
+      stillCancelled.forEach((sale, index) => {
+        console.log(`   ${index + 1}. ${sale.customerName} ${sale.customerSurname} - cancelledAt:${sale.cancelledAt} - cancelledBy:${sale.cancelledBy}`);
+      });
+    }
     
   } catch (error) {
     console.error('❌ Otomatik veri temizliği hatası:', error.message);
