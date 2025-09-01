@@ -25,7 +25,11 @@ const CancelledSales = () => {
     try {
       console.log('İptal edilmiş satışlar getiriliyor...');
       
-      const response = await axios.get('/api/sales/cancelled-sales');
+      const response = await axios.get('/api/sales/cancelled-sales', {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`
+        }
+      });
       console.log('API Response:', response.data);
       
       if (response.data.success) {
@@ -64,7 +68,11 @@ const CancelledSales = () => {
   const handleRestoreSale = async (saleId) => {
     if (window.confirm('Bu satışın iptalini geri almak istediğinizden emin misiniz?')) {
       try {
-        const response = await axios.post(`/api/sales/${saleId}/restore`);
+        const response = await axios.post(`/api/sales/${saleId}/restore`, {}, {
+          headers: {
+            'Authorization': `Bearer ${localStorage.getItem('token')}`
+          }
+        });
         toast.success(response.data.message);
         fetchCancelledSales(); // Listeyi yenile
       } catch (error) {
